@@ -294,4 +294,24 @@ def stats_today(message):
     bot.reply_to(message, text)
 
 print("ربات شروع شد ...")
+
+from flask import Flask
+import threading
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+# این خط رو قبل از bot.infinity_polling() بگذار
+threading.Thread(target=run_flask, daemon=True).start()
+
+
+
 bot.infinity_polling(timeout=20, long_polling_timeout=10)
