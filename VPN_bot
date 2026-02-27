@@ -313,5 +313,8 @@ def run_flask():
 threading.Thread(target=run_flask, daemon=True).start()
 
 
+import os
+print("مسیر دیتابیس:", os.path.abspath(DB_NAME))
+print("حجم فایل دیتابیس:", os.path.getsize(DB_NAME) if os.path.exists(DB_NAME) else "فایل وجود ندارد!")
 
 bot.infinity_polling(timeout=20, long_polling_timeout=10)
