@@ -79,7 +79,7 @@ def vpn_section(message):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
         InlineKeyboardButton("تست رایگان (فقط یک بار)", callback_data="free_test"),
-        InlineKeyboardButton("۱ ماهه | ۱ کاربر - ۱۵ گیگ → ۹۸,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb"),
+        InlineKeyboardButton("۱ ماهه | ۱ کاربر - ۱۵ گیگ → ۹۸,۰۰۰ تومان", callback_data="15_gig"),
         InlineKeyboardButton("۱ ماهه | ۱ کاربر - ۲۰ گیگ → ۱۲۲,۰۰۰ تومان", callback_data="vpn_1m_1u_20gb"),
         InlineKeyboardButton("۱ ماهه | ۱ کاربر - ۴۵ گیگ → ۱۹۰,۰۰۰ تومان", callback_data="vpn_1m_1u_45gb"),
         InlineKeyboardButton("۱ ماهه | ۲ کاربر - ۶۰ گیگ → ۲۴۵,۰۰۰ تومان", callback_data="vpn_1m_2u_60gb"),
@@ -133,7 +133,7 @@ def callback_handler(call):
     # ────── پلن‌های پولی ──────
     if call.data.startswith("vpn_"):
         plans = {
-            "vpn_1m_1u_15gb": ("۱ ماهه | ۱ کاربر - ۱۵ گیگ", "۹۸,۰۰۰ تومان", "6037997526562229"),
+            "15_gig": ("۱ ماهه | ۱ کاربر - ۱۵ گیگ", "۹۸,۰۰۰ تومان", "6037997526562229"),
             "vpn_1m_1u_20gb": ("۱ ماهه | ۱ کاربر - ۲۰ گیگ", "۱۲۲,۰۰۰ تومان", "6037997526562229"),
             "vpn_1m_1u_45gb": ("۱ ماهه | ۱ کاربر - ۴۵ گیگ", "۱۹۰,۰۰۰ تومان", "6037997526562229"),
             "vpn_1m_2u_60gb": ("۱ ماهه | ۲ کاربر - ۶۰ گیگ", "۲۴۵,۰۰۰ تومان", "6037997526562229"),
