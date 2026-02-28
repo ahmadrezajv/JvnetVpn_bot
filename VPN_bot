@@ -79,8 +79,7 @@ def vpn_section(message):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
 
-        InlineKeyboardButton("۱ ماهه | ۲ کاربر - ۶۰ گیگ → ۲۴۵,۰۰۰ تومان", callback_data="vpn_1m_2u_60gb"),
-        InlineKeyboardButton("۱ ماهه | ۲ کاربر - ۸۰ گیگ → ۳۰۰,۰۰۰ تومان", callback_data="vpn_1m_2u_80gb"),
+,
         InlineKeyboardButton("۱ ماهه | ۳ کاربر - ۹۰ گیگ → ۳۴۸,۰۰۰ تومان", callback_data="vpn_1m_3u_90gb"),
         InlineKeyboardButton("۱ ماهه | ۳ کاربر - ۱۰۰ گیگ → ۳۹۵,۰۰۰ تومان", callback_data="vpn_1m_3u_100gb"),
         InlineKeyboardButton("۱ ماهه | ۴ کاربر - ۱۴۰ گیگ → ۴۹۵,۰۰۰ تومان", callback_data="vpn_1m_4u_140gb"),
