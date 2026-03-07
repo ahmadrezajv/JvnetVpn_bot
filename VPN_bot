@@ -63,7 +63,7 @@ def vpn_section(message):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
         InlineKeyboardButton("تست رایگان (فقط یک بار)", callback_data="free_test"),
-        InlineKeyboardButton("۱ ماهه | ۱ کاربر - ۱۵ گیگ → 395,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb")
+        InlineKeyboardButton("۱ ماهه | ۱ کاربر - 12 گیگ → 395,۰۰۰ تومان", callback_data="vpn_1m_1u_12gb")
     )
     bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
 
@@ -82,7 +82,7 @@ def callback_handler(call):
 
         config = get_available_config("free_test")
         if config:
-            bot.send_message(user_id, f"تست رایگان شما:\n\n{config}\n\nاین فقط برای تست است.\nبرای خرید کامل، پلن ۱۵ گیگ را انتخاب کنید.")
+            bot.send_message(user_id, f"تست رایگان شما:\n\n{config}\n\nاین فقط برای تست است.\nبرای خرید کامل، پلن 12 گیگ را انتخاب کنید.")
             bot.answer_callback_query(call.id, "تست ارسال شد ✓", show_alert=True)
             cursor.execute("INSERT INTO free_tests (user_id, taken_at) VALUES (?, ?)",
                            (user_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -92,8 +92,8 @@ def callback_handler(call):
         conn.close()
         return
 
-    if call.data == "vpn_1m_1u_15gb":
-        plan_name = "۱ ماهه | ۱ کاربر - ۱۵ گیگ"
+    if call.data == "vpn_1m_1u_12gb":
+        plan_name = "۱ ماهه | ۱ کاربر - 12 گیگ"
         price = "395,۰۰۰ تومان"
         card = "6037997526562229"
         text = f"پلن انتخابی: {plan_name}\nمبلغ: {price}\n\nواریز به:\n{card}"
@@ -114,7 +114,7 @@ def callback_handler(call):
             config = get_available_config(plan_type)
             if config:
                 bot.send_message(uid, config, disable_web_page_preview=True)
-                bot.send_message(uid, "✅ سفارش تأیید شد!\nپلن: ۱ ماهه | ۱ کاربر - ۱۵ گیگ\nمدت اعتبار: ۳۰ روز\nپشتیبانی: @jvnetvpnn")
+                bot.send_message(uid, "✅ سفارش تأیید شد!\nپلن: ۱ ماهه | ۱ کاربر - 12 گیگ\nمدت اعتبار: ۳۰ روز\nپشتیبانی: @jvnetvpnn")
                 bot.edit_message_caption(call.message.caption + "\n\n✅ تأیید و ارسال شد", call.message.chat.id, call.message.message_id, reply_markup=None)
                 bot.answer_callback_query(call.id, "ارسال شد ✓", show_alert=True)
             else:
