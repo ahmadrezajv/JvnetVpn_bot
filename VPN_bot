@@ -63,7 +63,7 @@ def vpn_section(message):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
         InlineKeyboardButton("تست رایگان (فقط یک بار)", callback_data="free_test"),
-        InlineKeyboardButton("۱ ماهه | ۱ کاربر - 12 گیگ → 395,۰۰۰ تومان", callback_data="vpn_1m_1u_12gb")
+        InlineKeyboardButton("۱ ماهه | ۱ کاربر - 15 گیگ → 295,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb")
     )
     bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
 
@@ -92,9 +92,9 @@ def callback_handler(call):
         conn.close()
         return
 
-    if call.data == "vpn_1m_1u_12gb":
-        plan_name = "۱ ماهه | ۱ کاربر - 12 گیگ"
-        price = "395,۰۰۰ تومان"
+    if call.data == "vpn_1m_1u_15gb":
+        plan_name = "۱ ماهه | ۱ کاربر - 15 گیگ"
+        price = "295,۰۰۰ تومان"
         card = "6037997526562229"
         text = f"پلن انتخابی: {plan_name}\nمبلغ: {price}\n\nواریز به:\n{card}"
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id)
@@ -114,7 +114,159 @@ def callback_handler(call):
             config = get_available_config(plan_type)
             if config:
                 bot.send_message(uid, config, disable_web_page_preview=True)
-                bot.send_message(uid, "✅ سفارش تأیید شد!\nپلن: ۱ ماهه | ۱ کاربر - 12 گیگ\nمدت اعتبار: ۳۰ روز\nپشتیبانی: @jvnetvpnn")
+                bot.send_message(uid, "✅ سفارش تأیید شد!\nپلن: ۱ ماهه | ۱ کاربر - 15 گیگ\nمدت اعتبار: ۳۰ روز\nپشتیبانی: @jvnetvpnn")
+                bot.edit_message_caption(call.message.caption + "\n\n✅ تأیید و ارسال شد", call.message.chat.id, call.message.message_id, reply_markup=None)
+                bot.answer_callback_query(call.id, "ارسال شد ✓", show_alert=True)
+            else:
+                bot.answer_callback_query(call.id, "کانفیگ موجود نیست!", show_alert=True)
+        except Exception as e:
+            print("خطا در تأیید:", e)
+            bot.answer_callback_query(call.id, "خطا در پردازش", show_alert=True)
+
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    user_id = message.chat.id
+    plan_type = user_plans.get(user_id, "نامشخص")
+
+    caption = f"رسید جدید:\nنام: {message.chat.first_name}\nیوزرنیم: @{message.chat.username}\nآیدی: {user_id}\nپلن: {plan_type}"
+
+    markup = InlineKeyboardMarkup()
+    confirm_data = f"confirm_{user_id}_{plan_type}"
+    markup.add(InlineKeyboardButton("تأیید سفارش و ارسال کانفیگ", callback_data=confirm_data))
+
+    bot.send_photo(ADMIN_CHAT_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
+    bot.send_message(message.chat.id, "رسید دریافت شد. منتظر تأیید باشید.")
+
+    if user_id in user_plans:
+        del user_plans[user_id]
+
+@bot.message_handler(func=lambda m: m.text == "Apple ID")
+def apple_id_section(m):
+    bot.send_message(m.chat.id, "به زودی فعال می‌شود.")
+
+@bot.message_handler(func=lambda m: m.text == "ارتباط با ادمین")
+def contact_admin(m):
+    bot.send_message(m.chat.id, "پیام به: @jvnetvpnn")
+
+print("ربات شروع شد ...")
+
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import sqlite3
+from datetime import datetime
+
+TOKEN = "7981757087:AAGkJ0g-sbjlJ3igKKasxDZpCfc4fD0emx8"
+ADMIN_CHAT_ID = 850891866
+DB_NAME = "jjvnet.db"  # ← دیتابیس جدید
+
+user_plans = {}  # فقط برای نگهداری پلن موقت
+
+bot = telebot.TeleBot(TOKEN)
+
+def get_available_config(plan_type):
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, config_text 
+            FROM vpn_configs 
+            WHERE plan_type = ? AND is_used = 0 
+            LIMIT 1
+        """, (plan_type,))
+        row = cursor.fetchone()
+        if row:
+            config_id, config_text = row
+            cursor.execute("UPDATE vpn_configs SET is_used = 1 WHERE id = ?", (config_id,))
+            conn.commit()
+            conn.close()
+            return config_text
+        conn.close()
+        return None
+    except Exception as e:
+        print("خطا در get_available_config:", e)
+        return None
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    user_id = message.chat.id
+    username = message.chat.username or "ندارد"
+    first_name = message.chat.first_name or "ندارد"
+    start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        today = datetime.now().strftime("%Y-%m-%d")
+        cursor.execute("SELECT COUNT(*) FROM user_starts WHERE user_id = ? AND start_time LIKE ?", (user_id, f"{today}%"))
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO user_starts (user_id, username, first_name, start_time) VALUES (?, ?, ?, ?)",
+                           (user_id, username, first_name, start_time))
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"خطا در ثبت استارت: {e}")
+
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("VPN", "Apple ID", "ارتباط با ادمین")
+    bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "VPN")
+def vpn_section(message):
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        InlineKeyboardButton("تست رایگان (فقط یک بار)", callback_data="free_test"),
+        InlineKeyboardButton("۱ ماهه | ۱ کاربر - 15 گیگ → 295,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb")
+    )
+    bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_handler(call):
+    user_id = call.from_user.id
+
+    if call.data == "free_test":
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM free_tests WHERE user_id = ?", (user_id,))
+        if cursor.fetchone():
+            bot.answer_callback_query(call.id, "شما قبلاً تست رایگان گرفتید!", show_alert=True)
+            conn.close()
+            return
+
+        config = get_available_config("free_test")
+        if config:
+            bot.send_message(user_id, f"تست رایگان شما:\n\n{config}\n\nاین فقط برای تست است.\nبرای خرید کامل، پلن 12 گیگ را انتخاب کنید.")
+            bot.answer_callback_query(call.id, "تست ارسال شد ✓", show_alert=True)
+            cursor.execute("INSERT INTO free_tests (user_id, taken_at) VALUES (?, ?)",
+                           (user_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            conn.commit()
+        else:
+            bot.answer_callback_query(call.id, "تست رایگان موجود نیست!", show_alert=True)
+        conn.close()
+        return
+
+    if call.data == "vpn_1m_1u_15gb":
+        plan_name = "۱ ماهه | ۱ کاربر - 15 گیگ"
+        price = "295,۰۰۰ تومان"
+        card = "6037997526562229"
+        text = f"پلن انتخابی: {plan_name}\nمبلغ: {price}\n\nواریز به:\n{card}"
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id)
+        bot.send_message(call.message.chat.id, "عکس رسید را ارسال کنید.")
+        user_plans[call.message.chat.id] = call.data
+        return
+
+    if call.data.startswith("confirm_"):
+        if call.from_user.id != ADMIN_CHAT_ID:
+            bot.answer_callback_query(call.id, "شما ادمین نیستید!", show_alert=True)
+            return
+
+        try:
+            _, uid_str, plan_type = call.data.split("_", 2)
+            uid = int(uid_str)
+
+            config = get_available_config(plan_type)
+            if config:
+                bot.send_message(uid, config, disable_web_page_preview=True)
+                bot.send_message(uid, "✅ سفارش تأیید شد!\nپلن: ۱ ماهه | ۱ کاربر - 15 گیگ\nمدت اعتبار: ۳۰ روز\nپشتیبانی: @jvnetvpnn")
                 bot.edit_message_caption(call.message.caption + "\n\n✅ تأیید و ارسال شد", call.message.chat.id, call.message.message_id, reply_markup=None)
                 bot.answer_callback_query(call.id, "ارسال شد ✓", show_alert=True)
             else:
