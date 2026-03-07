@@ -5,10 +5,9 @@ from datetime import datetime
 
 TOKEN = "7981757087:AAGkJ0g-sbjlJ3igKKasxDZpCfc4fD0emx8"
 ADMIN_CHAT_ID = 850891866
-DB_NAME = "vpn_configs.db"
+DB_NAME = "jvnet.db"  # ← دیتابیس جدید
 
-# دیکشنری موقتی برای ذخیره پلن انتخاب‌شده هر کاربر (فقط برای پلن‌های پولی)
-user_plans = {}  # user_id → plan_type
+user_plans = {}  # فقط برای نگهداری پلن موقت
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -33,191 +32,96 @@ def get_available_config(plan_type):
         return None
     except Exception as e:
         print("خطا در get_available_config:", e)
-        if 'conn' in locals():
-            conn.close()
         return None
-
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    # ثبت استارت در دیتابیس
     user_id = message.chat.id
-    username = message.chat.username if message.chat.username else "ندارد"
-    first_name = message.chat.first_name if message.chat.first_name else "ندارد"
+    username = message.chat.username or "ندارد"
+    first_name = message.chat.first_name or "ندارد"
     start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     try:
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
         today = datetime.now().strftime("%Y-%m-%d")
-        cursor.execute("""
-            SELECT COUNT(*) FROM user_starts 
-            WHERE user_id = ? AND start_time LIKE ?
-        """, (user_id, f"{today}%"))
-
+        cursor.execute("SELECT COUNT(*) FROM user_starts WHERE user_id = ? AND start_time LIKE ?", (user_id, f"{today}%"))
         if cursor.fetchone()[0] == 0:
-            cursor.execute("""
-                INSERT INTO user_starts (user_id, username, first_name, start_time)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, username, first_name, start_time))
+            cursor.execute("INSERT INTO user_starts (user_id, username, first_name, start_time) VALUES (?, ?, ?, ?)",
+                           (user_id, username, first_name, start_time))
             conn.commit()
-            print(f"استارت جدید ثبت شد → کاربر: {user_id} ({first_name})")
-
         conn.close()
-
     except Exception as e:
-        print(f"خطا در ثبت استارت کاربر {user_id}: {e}")
+        print(f"خطا در ثبت استارت: {e}")
 
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("VPN", "Apple ID", "ارتباط با ادمین")
     bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
 
-
 @bot.message_handler(func=lambda m: m.text == "VPN")
 def vpn_section(message):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-
-,
-        InlineKeyboardButton("۱ ماهه | ۳ کاربر - ۹۰ گیگ → ۳۴۸,۰۰۰ تومان", callback_data="vpn_1m_3u_90gb"),
-        InlineKeyboardButton("۱ ماهه | ۳ کاربر - ۱۰۰ گیگ → ۳۹۵,۰۰۰ تومان", callback_data="vpn_1m_3u_100gb"),
-        InlineKeyboardButton("۱ ماهه | ۴ کاربر - ۱۴۰ گیگ → ۴۹۵,۰۰۰ تومان", callback_data="vpn_1m_4u_140gb"),
-        InlineKeyboardButton("۱ ماهه | ۵ کاربر - ۲۵۰ گیگ → ۷۷۹,۰۰۰ تومان", callback_data="vpn_1m_5u_250gb")
+        InlineKeyboardButton("تست رایگان (فقط یک بار)", callback_data="free_test"),
+        InlineKeyboardButton("۱ ماهه | ۱ کاربر - ۱۵ گیگ → ۹۸,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb")
     )
     bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
-
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     user_id = call.from_user.id
 
-    # ────── تست رایگان ──────
     if call.data == "free_test":
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM free_tests WHERE user_id = ?", (user_id,))
-        already_taken = cursor.fetchone() is not None
-
-        if already_taken:
-            bot.answer_callback_query(call.id, "شما قبلاً تست رایگان گرفته‌اید!", show_alert=True)
+        if cursor.fetchone():
+            bot.answer_callback_query(call.id, "شما قبلاً تست رایگان گرفتید!", show_alert=True)
             conn.close()
             return
 
-        # کانفیگ تست (می‌تونی plan_type تست رو عوض کنی یا از free_test استفاده کنی)
-        config = get_available_config("free_test")  # یا یک plan_type ثابت مثل "vpn_1m_1u_15gb"
+        config = get_available_config("free_test")
         if config:
-            bot.send_message(
-                user_id,
-                f"تست رایگان شما آماده است!\n\n"
-                f"کانفیگ تست:\n\n{config}\n\n"
-                "این کانفیگ فقط برای تست است (مثلاً ۱ گیگ یا ۲۴ ساعت).\n"
-                "برای استفاده کامل، یکی از پلن‌های پولی را انتخاب کنید."
-            )
-            bot.answer_callback_query(call.id, "تست رایگان ارسال شد ✓", show_alert=True)
-
-            # ثبت تست رایگان
+            bot.send_message(user_id, f"تست رایگان شما:\n\n{config}\n\nاین فقط برای تست است.\nبرای خرید کامل، پلن ۱۵ گیگ را انتخاب کنید.")
+            bot.answer_callback_query(call.id, "تست ارسال شد ✓", show_alert=True)
             cursor.execute("INSERT INTO free_tests (user_id, taken_at) VALUES (?, ?)",
                            (user_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
             conn.commit()
         else:
-            bot.answer_callback_query(call.id, "در حال حاضر تست رایگان موجود نیست!", show_alert=True)
-
+            bot.answer_callback_query(call.id, "تست رایگان موجود نیست!", show_alert=True)
         conn.close()
         return
 
-    # ────── پلن‌های پولی ──────
-    if call.data.startswith("vpn_"):
-        plans = {
-
-
-            "vpn_1m_3u_90gb": ("۱ ماهه | ۳ کاربر - ۹۰ گیگ", "۳۴۸,۰۰۰ تومان", "6037997526562229"),
-            "vpn_1m_3u_100gb": ("۱ ماهه | ۳ کاربر - ۱۰۰ گیگ", "۳۹۵,۰۰۰ تومان", "6037997526562229"),
-            "vpn_1m_4u_140gb": ("۱ ماهه | ۴ کاربر - ۱۴۰ گیگ", "۴۹۵,۰۰۰ تومان", "6037997526562229"),
-            "vpn_1m_5u_250gb": ("۱ ماهه | ۵ کاربر - ۲۵۰ گیگ", "۷۷۹,۰۰۰ تومان", "6037997526562229"),
-        }
-        if call.data in plans:
-            plan_name, price, card = plans[call.data]
-            text = f"پلن انتخابی: {plan_name}\nمبلغ: {price}\n\nواریز به:\n{card}"
-            bot.edit_message_text(text, call.message.chat.id, call.message.message_id)
-            bot.send_message(call.message.chat.id, "عکس رسید را ارسال کنید.")
-
-            user_plans[call.message.chat.id] = call.data
-            print(f"پلن {call.data} برای کاربر {call.message.chat.id} ذخیره شد")
-        else:
-            bot.answer_callback_query(call.id, "پلن نامعتبر", show_alert=True)
+    if call.data == "vpn_1m_1u_15gb":
+        plan_name = "۱ ماهه | ۱ کاربر - ۱۵ گیگ"
+        price = "۹۸,۰۰۰ تومان"
+        card = "6037997526562229"
+        text = f"پلن انتخابی: {plan_name}\nمبلغ: {price}\n\nواریز به:\n{card}"
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id)
+        bot.send_message(call.message.chat.id, "عکس رسید را ارسال کنید.")
+        user_plans[call.message.chat.id] = call.data
         return
 
-    # ────── تأیید سفارش ──────
-        # ────── تأیید سفارش توسط ادمین ──────
     if call.data.startswith("confirm_"):
         if call.from_user.id != ADMIN_CHAT_ID:
             bot.answer_callback_query(call.id, "شما ادمین نیستید!", show_alert=True)
             return
 
         try:
-            parts = call.data.split("_", 2)
-            if len(parts) != 3:
-                raise ValueError("فرمت callback_data اشتباه است")
-
-            _, user_id_str, plan_type = parts
-            user_id = int(user_id_str)
+            _, uid_str, plan_type = call.data.split("_", 2)
+            uid = int(uid_str)
 
             config = get_available_config(plan_type)
             if config:
-                # پیام اول: فقط کانفیگ خام (برای کپی آسان)
-                bot.send_message(
-                    user_id,
-                    config,
-                    disable_web_page_preview=True
-                )
-
-                # پیام دوم: متن توضیحی کامل
-                bot.send_message(
-                    user_id,
-                    "✅ سفارش شما با موفقیت تأیید شد!\n\n"
-                    f"پلن: {plan_type.replace('_', ' ')}\n"
-                    "مدت اعتبار: ۳۰ روز\n\n"
-                    "از اینکه به ما اعتماد کردید بسیار سپاس‌گزاریم ❤️\n\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    "روی پیام قبلی (فقط کانفیگ)  و گزینه Copy را بزنید.\n"
-                    "سپس در اپ v2rayNG / NPV Tunnle  / Nekobox بچسبونید.\n\n"
-                    "نکات مهم:\n"
-                    "• برای اطلاع از قطعی احتمالی حتماً کانال رسمی را دنبال کنید:\n"
-                    "  @jvnetvpn\n\n"
-                    "• برای چک کردن حجم و زمان باقی‌مانده به پشتیبانی پیام بدید:\n"
-                    "  @jvnetvpnn\n\n"
-                    "• پشتیبانی هیچ مسئولیتی در قبال کند شدن یا قطع شدن به دلیل اضافه کردن کاربر اضافی ندارد.\n"
-                    "  لطفاً در انتخاب پلن و تعداد کاربران اتصالی دقت کنید.\n\n"
-                    "• سرویسی که دریافت کردید حتی در زمان اینترنت ملی هم آماده به کار است.\n\n"
-                    "ضمانت ما، کیفیت ماست.\n\n"
-                    "پشتیبانی: @jvnetvpnn",
-                    disable_web_page_preview=True
-                )
-
-                bot.edit_message_caption(
-                    caption=call.message.caption + "\n\n✅ تأیید و ارسال شد",
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    reply_markup=None
-                )
-
-                bot.answer_callback_query(call.id, "سفارش تأیید و کانفیگ ارسال شد ✓", show_alert=True)
-
-                bot.send_message(
-                    ADMIN_CHAT_ID,
-                    f"کانفیگ ارسال‌شده به کاربر {user_id}:\n\n{config}\n\n"
-                    f"پلن: {plan_type}\n"
-                    f"زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                )
-
+                bot.send_message(uid, config, disable_web_page_preview=True)
+                bot.send_message(uid, "✅ سفارش تأیید شد!\nپلن: ۱ ماهه | ۱ کاربر - ۱۵ گیگ\nمدت اعتبار: ۳۰ روز\nپشتیبانی: @jvnetvpnn")
+                bot.edit_message_caption(call.message.caption + "\n\n✅ تأیید و ارسال شد", call.message.chat.id, call.message.message_id, reply_markup=None)
+                bot.answer_callback_query(call.id, "ارسال شد ✓", show_alert=True)
             else:
-                bot.answer_callback_query(call.id, "کانفیگ آزاد موجود نیست!", show_alert=True)
-
+                bot.answer_callback_query(call.id, "کانفیگ موجود نیست!", show_alert=True)
         except Exception as e:
-            bot.answer_callback_query(call.id, f"خطا: {str(e)}", show_alert=True)
             print("خطا در تأیید:", e)
-        return
+            bot.answer_callback_query(call.id, "خطا در پردازش", show_alert=True)
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
@@ -230,13 +134,7 @@ def handle_photo(message):
     confirm_data = f"confirm_{user_id}_{plan_type}"
     markup.add(InlineKeyboardButton("تأیید سفارش و ارسال کانفیگ", callback_data=confirm_data))
 
-    bot.send_photo(
-        ADMIN_CHAT_ID,
-        message.photo[-1].file_id,
-        caption=caption,
-        reply_markup=markup
-    )
-
+    bot.send_photo(ADMIN_CHAT_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
     bot.send_message(message.chat.id, "رسید دریافت شد. منتظر تأیید باشید.")
 
     if user_id in user_plans:
@@ -250,42 +148,6 @@ def apple_id_section(m):
 def contact_admin(m):
     bot.send_message(m.chat.id, "پیام به: @jvnetvpnn")
 
-@bot.message_handler(commands=['stats_today'])
-def stats_today(message):
-    if message.chat.id != ADMIN_CHAT_ID:
-        return
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT COUNT(*) FROM user_starts 
-        WHERE start_time LIKE ?
-    """, (f"{today}%",))
-    count = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT user_id, first_name, username, start_time 
-        FROM user_starts 
-        WHERE start_time LIKE ? 
-        ORDER BY start_time DESC
-    """, (f"{today}%",))
-    records = cursor.fetchall()
-
-    conn.close()
-
-    text = f"آمار استارت امروز ({today}):\nتعداد: {count}\n\n"
-    if count > 0:
-        text += "لیست:\n"
-        for r in records:
-            username = f"@{r[2]}" if r[2] else "ندارد"
-            text += f"• {r[1]} ({username}) - ID: {r[0]} - {r[3]}\n"
-    else:
-        text += "امروز هنوز استارتی ثبت نشده."
-
-    bot.reply_to(message, text)
-
 print("ربات شروع شد ...")
 
 from flask import Flask
@@ -298,16 +160,6 @@ app = Flask(__name__)
 def home():
     return "Bot is alive!"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-# این خط رو قبل از bot.infinity_polling() بگذار
-threading.Thread(target=run_flask, daemon=True).start()
-
-
-import os
-print("مسیر دیتابیس:", os.path.abspath(DB_NAME))
-print("حجم فایل دیتابیس:", os.path.getsize(DB_NAME) if os.path.exists(DB_NAME) else "فایل وجود ندارد!")
+threading.Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000))), daemon=True).start()
 
 bot.infinity_polling(timeout=20, long_polling_timeout=10)
