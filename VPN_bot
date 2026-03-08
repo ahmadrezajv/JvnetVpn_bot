@@ -214,8 +214,8 @@ def send_welcome(message):
 def vpn_section(message):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        InlineKeyboardButton("تست رایگان (فقط یک بار)", callback_data="free_test"),
-        InlineKeyboardButton("۱ ماهه | ۱ کاربر - 15 گیگ → 295,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb")
+       
+        InlineKeyboardButton("۱ ماهه | ۱ کاربر - 15 گیگ → 395,۰۰۰ تومان", callback_data="vpn_1m_1u_15gb")
     )
     bot.send_message(message.chat.id, "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=markup)
 
@@ -246,7 +246,7 @@ def callback_handler(call):
 
     if call.data == "vpn_1m_1u_15gb":
         plan_name = "۱ ماهه | ۱ کاربر - 15 گیگ"
-        price = "295,۰۰۰ تومان"
+        price = "395,۰۰۰ تومان"
         card = "6037997526562229"
         text = f"پلن انتخابی: {plan_name}\nمبلغ: {price}\n\nواریز به:\n{card}"
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id)
