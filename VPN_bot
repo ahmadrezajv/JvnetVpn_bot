@@ -5,7 +5,7 @@ from datetime import datetime
 
 TOKEN = "7981757087:AAGkJ0g-sbjlJ3igKKasxDZpCfc4fD0emx8"
 ADMIN_CHAT_ID = 850891866
-DB_NAME = "jvnetnew.db"  # ← دیتابیس جدید
+DB_NAME = "jvdate.db"  # ← دیتابیس جدید
 
 user_plans = {}  # فقط برای نگهداری پلن موقت
 
